@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/widgets/loading_dialog.dart';
 import '../../../../core/widgets/page_content.dart';
+import '../../../auth/presentation/providers/auth_notifier.dart';
 import '../providers/device_notifier.dart';
 
 class UpdateIReachPage extends ConsumerStatefulWidget {
@@ -13,46 +14,32 @@ class UpdateIReachPage extends ConsumerStatefulWidget {
 }
 
 class _UpdateIReachPageState extends ConsumerState<UpdateIReachPage> {
-  final _deviceIdController = TextEditingController();
   bool _iReachClosed = false;
 
   @override
   void dispose() {
-    _deviceIdController.dispose();
     ref.read(deviceNotifierProvider.notifier).reset();
     super.dispose();
   }
 
-  Future<void> _validateDevice() async {
-    final deviceId = _deviceIdController.text.trim().isEmpty
-        ? 'WIN-001'
-        : _deviceIdController.text;
-
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => const LoadingDialog(message: 'Validating device...'),
-    );
-
-    final success = await ref
-        .read(deviceNotifierProvider.notifier)
-        .validateDevice(deviceId);
-
-    if (mounted) {
-      Navigator.of(context).pop();
-      if (!success) {
-        final error = ref.read(deviceNotifierProvider).error;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(error ?? 'Device not found')),
-        );
-      }
+  void _confirmDeviceId() {
+    final deviceId = ref.read(authNotifierProvider).user?.deviceId;
+    if (deviceId == null || deviceId.trim().isEmpty) {
+      _showMissingDeviceIdMessage();
+      return;
     }
+
+    ref
+        .read(deviceNotifierProvider.notifier)
+        .confirmAssignedDevice(deviceId.trim());
   }
 
   Future<void> _executeUpdate() async {
-    final deviceId = _deviceIdController.text.trim().isEmpty
-        ? 'WIN-001'
-        : _deviceIdController.text;
+    final deviceId = ref.read(authNotifierProvider).user?.deviceId;
+    if (deviceId == null || deviceId.trim().isEmpty) {
+      _showMissingDeviceIdMessage();
+      return;
+    }
 
     showDialog(
       context: context,
@@ -62,7 +49,7 @@ class _UpdateIReachPageState extends ConsumerState<UpdateIReachPage> {
 
     final success = await ref
         .read(deviceNotifierProvider.notifier)
-        .executeIReachUpdate(deviceId);
+        .executeIReachUpdate(deviceId.trim());
 
     if (mounted) {
       Navigator.of(context).pop();
@@ -78,6 +65,8 @@ class _UpdateIReachPageState extends ConsumerState<UpdateIReachPage> {
   @override
   Widget build(BuildContext context) {
     final deviceState = ref.watch(deviceNotifierProvider);
+    final user = ref.watch(authNotifierProvider).user;
+    final deviceId = user?.deviceId;
 
     return Scaffold(
       appBar: AppBar(
@@ -97,7 +86,8 @@ class _UpdateIReachPageState extends ConsumerState<UpdateIReachPage> {
                 deviceState.updateMessage ?? 'Update started successfully')
             : deviceState.isValidated
                 ? _buildUpdatePrompt(context)
-                : _buildDeviceEntry(context),
+                : _buildDeviceConfirmation(
+                    context, user?.displayName, deviceId),
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _showSupportSheet(context),
@@ -107,7 +97,13 @@ class _UpdateIReachPageState extends ConsumerState<UpdateIReachPage> {
     );
   }
 
-  Widget _buildDeviceEntry(BuildContext context) {
+  Widget _buildDeviceConfirmation(
+    BuildContext context,
+    String? displayName,
+    String? deviceId,
+  ) {
+    final hasDeviceId = deviceId != null && deviceId.trim().isNotEmpty;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -123,13 +119,18 @@ class _UpdateIReachPageState extends ConsumerState<UpdateIReachPage> {
                         size: 36, color: Theme.of(context).primaryColor),
                     const SizedBox(width: 16),
                     Expanded(
-                        child: Text('Update iReach Application',
+                        child: Text(
+                            displayName == null || displayName.trim().isEmpty
+                                ? 'Update iReach Application'
+                                : 'Welcome, ${displayName.trim()}',
                             style: Theme.of(context).textTheme.headlineSmall)),
                   ],
                 ),
                 const SizedBox(height: 20),
                 Text(
-                  'A new version of iReach is available. Enter your device ID to start the update process.',
+                  hasDeviceId
+                      ? 'Please confirm that your device ID is ${deviceId.trim()}. If this is correct, please click continue. Otherwise, contact help desk for assistance.'
+                      : 'Your interviewer record does not include a device ID. Please contact help desk for assistance.',
                   style: Theme.of(context).textTheme.bodyLarge,
                 ),
               ],
@@ -137,24 +138,54 @@ class _UpdateIReachPageState extends ConsumerState<UpdateIReachPage> {
           ),
         ),
         const SizedBox(height: 48),
-        Text('Device ID',
-            style: Theme.of(context)
-                .textTheme
-                .titleLarge
-                ?.copyWith(fontWeight: FontWeight.w600)),
-        const SizedBox(height: 12),
-        TextField(
-          controller: _deviceIdController,
-          decoration: const InputDecoration(
-            hintText: 'e.g., TAB-DEF-67890',
-            prefixIcon: Icon(Icons.devices, size: 28),
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(28),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Assigned Device ID',
+                    style: Theme.of(context)
+                        .textTheme
+                        .titleLarge
+                        ?.copyWith(fontWeight: FontWeight.w600)),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    const Icon(Icons.devices_rounded, size: 30),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Text(
+                        hasDeviceId ? deviceId.trim() : 'No device ID found',
+                        style: Theme.of(context).textTheme.headlineSmall,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  hasDeviceId
+                      ? 'This device ID was pulled from your interviewer profile.'
+                      : 'The update cannot continue until a device ID is available.',
+                  style: Theme.of(context).textTheme.bodyLarge,
+                ),
+              ],
+            ),
           ),
         ),
         const SizedBox(height: 48),
-        ElevatedButton.icon(
-          onPressed: _validateDevice,
-          icon: const Icon(Icons.arrow_forward, size: 24),
-          label: const Text('Continue'),
+        if (hasDeviceId) ...[
+          ElevatedButton.icon(
+            onPressed: _confirmDeviceId,
+            icon: const Icon(Icons.check_circle_outline, size: 24),
+            label: const Text('Continue'),
+          ),
+          const SizedBox(height: 16),
+        ],
+        OutlinedButton.icon(
+          onPressed: () => context.go('/existing-interviewer-dashboard'),
+          icon: const Icon(Icons.arrow_back_rounded, size: 24),
+          label: const Text('Back'),
         ),
       ],
     );
@@ -178,7 +209,7 @@ class _UpdateIReachPageState extends ConsumerState<UpdateIReachPage> {
                   const SizedBox(width: 14),
                   Expanded(
                     child: Text(
-                      '${device.deviceId} validated as ${device.type.displayName}',
+                      'Confirmed device ID: ${device.deviceId}',
                       style: Theme.of(context).textTheme.titleMedium,
                     ),
                   ),
@@ -201,7 +232,7 @@ class _UpdateIReachPageState extends ConsumerState<UpdateIReachPage> {
                     const SizedBox(width: 16),
                     Expanded(
                       child: Text(
-                        'Important: Close iReach First',
+                        'Important: Sync and Close iReach First',
                         style: Theme.of(context)
                             .textTheme
                             .headlineSmall
@@ -212,7 +243,7 @@ class _UpdateIReachPageState extends ConsumerState<UpdateIReachPage> {
                 ),
                 const SizedBox(height: 20),
                 Text(
-                  'Before we can update iReach, you must close the application completely to avoid losing any data.',
+                  'Before the update starts, sync iReach so your saved work is sent to the server, then close the application completely.',
                   style: Theme.of(context).textTheme.bodyLarge,
                 ),
               ],
@@ -232,10 +263,14 @@ class _UpdateIReachPageState extends ConsumerState<UpdateIReachPage> {
                         .titleLarge
                         ?.copyWith(fontWeight: FontWeight.bold)),
                 const SizedBox(height: 20),
-                _buildStep(context, 'Save or finish any active interviews'),
-                _buildStep(context, 'Close all iReach windows and dialogues'),
-                _buildStep(context, 'Check the taskbar or recent apps list'),
-                _buildStep(context, 'Return here when done'),
+                _buildStep(
+                  context,
+                  'Please sync I-Reach. This pushes local work to the server.',
+                ),
+                _buildStep(
+                  context,
+                  'Close I-Reach before you proceed with the update.',
+                ),
               ],
             ),
           ),
@@ -244,15 +279,16 @@ class _UpdateIReachPageState extends ConsumerState<UpdateIReachPage> {
         CheckboxListTile(
           value: _iReachClosed,
           onChanged: (value) => setState(() => _iReachClosed = value ?? false),
-          title: Text('I have closed iReach',
+          title: Text(
+              'I have synced and closed I-Reach and am ready for update.',
               style: Theme.of(context).textTheme.titleMedium),
-          subtitle: Text('Confirm that iReach is completely closed',
+          subtitle: Text('Confirm you are ready for the update to start',
               style: Theme.of(context).textTheme.bodyMedium),
           contentPadding: const EdgeInsets.symmetric(vertical: 12),
         ),
         const SizedBox(height: 32),
         ElevatedButton.icon(
-          onPressed: _executeUpdate,
+          onPressed: _iReachClosed ? _executeUpdate : null,
           icon: const Icon(Icons.play_arrow, size: 24),
           label: const Text('Start Update'),
         ),
@@ -383,7 +419,7 @@ class _UpdateIReachPageState extends ConsumerState<UpdateIReachPage> {
 
   Widget _buildUpdateProgress(BuildContext context, int currentStep) {
     const steps = [
-      'Validate device',
+      'Confirm device',
       'Close iReach',
       'Run update',
     ];
@@ -473,6 +509,16 @@ class _UpdateIReachPageState extends ConsumerState<UpdateIReachPage> {
           ),
         );
       },
+    );
+  }
+
+  void _showMissingDeviceIdMessage() {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'No device ID was found on your user record. Please contact Helpdesk for assistance.',
+        ),
+      ),
     );
   }
 }

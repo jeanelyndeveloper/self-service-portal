@@ -26,9 +26,19 @@ class _DeviceSetupPageState extends ConsumerState<DeviceSetupPage> {
   }
 
   Future<void> _validateDevice() async {
-    final deviceId = _deviceIdController.text.trim().isEmpty
-        ? 'WIN-001'
-        : _deviceIdController.text;
+    final assignedDeviceId = ref.read(authNotifierProvider).user?.deviceId;
+    final deviceId = assignedDeviceId?.trim().isNotEmpty == true
+        ? assignedDeviceId!.trim()
+        : _deviceIdController.text.trim();
+
+    if (deviceId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No device ID was found. Please contact Helpdesk.'),
+        ),
+      );
+      return;
+    }
 
     showDialog(
       context: context,
@@ -86,6 +96,10 @@ class _DeviceSetupPageState extends ConsumerState<DeviceSetupPage> {
   Widget _buildDeviceIdEntry(BuildContext context) {
     final authState = ref.watch(authNotifierProvider);
     final interviewerName = authState.user?.username;
+    final assignedDeviceId = authState.user?.deviceId;
+    final hasAssignedDevice =
+        assignedDeviceId != null && assignedDeviceId.trim().isNotEmpty;
+    final pin = hasAssignedDevice ? _pinForDeviceId(assignedDeviceId) : null;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -107,7 +121,9 @@ class _DeviceSetupPageState extends ConsumerState<DeviceSetupPage> {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  'Next, enter the device ID printed on the laptop, tablet, or device package. The device record determines which static setup knowledge guide you will see.',
+                  hasAssignedDevice
+                      ? 'Your assigned device has been found. Confirm it below to open your setup guide.'
+                      : 'Your record was verified, but no assigned device was returned. Enter the device ID from the device label or contact Helpdesk.',
                   style: Theme.of(context).textTheme.bodyMedium,
                 ),
               ],
@@ -127,14 +143,19 @@ class _DeviceSetupPageState extends ConsumerState<DeviceSetupPage> {
                         size: 36, color: Theme.of(context).primaryColor),
                     const SizedBox(width: 16),
                     Expanded(
-                      child: Text('Enter Your Device ID',
+                      child: Text(
+                          hasAssignedDevice
+                              ? 'Confirm Your Assigned Device'
+                              : 'Enter Your Device ID',
                           style: Theme.of(context).textTheme.headlineSmall),
                     ),
                   ],
                 ),
                 const SizedBox(height: 20),
                 Text(
-                  'You can find your device ID on the QR/device label, on the device itself, or in the setup package provided to you.',
+                  hasAssignedDevice
+                      ? 'Please check that this is the device you received. If it does not match, contact Helpdesk before continuing.'
+                      : 'You can find your device ID on the device label, on the device itself, or in the setup package provided to you.',
                   style: Theme.of(context).textTheme.bodyLarge,
                 ),
               ],
@@ -142,26 +163,68 @@ class _DeviceSetupPageState extends ConsumerState<DeviceSetupPage> {
           ),
         ),
         const SizedBox(height: 48),
-        Text(
-          'Device ID',
-          style: Theme.of(context)
-              .textTheme
-              .titleLarge
-              ?.copyWith(fontWeight: FontWeight.w600),
-        ),
-        const SizedBox(height: 12),
-        TextField(
-          controller: _deviceIdController,
-          decoration: const InputDecoration(
-            hintText: 'e.g., COMNUM1223 or LAP-ABC-12345',
-            prefixIcon: Icon(Icons.devices, size: 28),
+        if (hasAssignedDevice)
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(28),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Assigned Device ID',
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleLarge
+                          ?.copyWith(fontWeight: FontWeight.w600)),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      const Icon(Icons.laptop_windows_rounded, size: 30),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Text(
+                          assignedDeviceId.trim(),
+                          style: Theme.of(context).textTheme.headlineSmall,
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (pin != null) ...[
+                    const SizedBox(height: 22),
+                    Text('First-login PIN',
+                        style: Theme.of(context).textTheme.titleMedium),
+                    const SizedBox(height: 8),
+                    Text(
+                      pin,
+                      style: Theme.of(context).textTheme.headlineSmall,
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          )
+        else ...[
+          Text(
+            'Device ID',
+            style: Theme.of(context)
+                .textTheme
+                .titleLarge
+                ?.copyWith(fontWeight: FontWeight.w600),
           ),
-        ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _deviceIdController,
+            decoration: const InputDecoration(
+              hintText: 'e.g., IPLT671 or CBG-TAB-671',
+              prefixIcon: Icon(Icons.devices, size: 28),
+            ),
+          ),
+        ],
         const SizedBox(height: 48),
         ElevatedButton.icon(
           onPressed: _validateDevice,
           icon: const Icon(Icons.check, size: 24),
-          label: const Text('Validate Device'),
+          label:
+              Text(hasAssignedDevice ? 'Open Setup Guide' : 'Validate Device'),
         ),
       ],
     );
@@ -203,6 +266,11 @@ class _DeviceSetupPageState extends ConsumerState<DeviceSetupPage> {
                       if (device.name != null) ...[
                         const SizedBox(height: 2),
                         Text('Device Name: ${device.name}',
+                            style: Theme.of(context).textTheme.bodyMedium),
+                      ],
+                      if (_pinForDeviceId(device.deviceId) case final pin?) ...[
+                        const SizedBox(height: 2),
+                        Text('First-login PIN: $pin',
                             style: Theme.of(context).textTheme.bodyMedium),
                       ],
                     ],
@@ -304,13 +372,14 @@ class _DeviceSetupPageState extends ConsumerState<DeviceSetupPage> {
   static const _windowsInstructions = [
     _InstructionData(
         title: 'Get Your Laptop PIN',
-        description: 'Use your verified device ID when requesting the PIN',
+        description:
+            'Use the PIN shown above when signing in for the first time',
         details: '''
-1. Keep this portal open on your phone or tablet after scanning the QR code
-2. Confirm the device ID shown on your laptop or package
-3. Contact Helpdesk and provide your name and device ID
-4. Helpdesk will confirm your onboarding record
-5. Enter the PIN provided by Helpdesk on the laptop sign-in screen'''),
+1. Keep this portal open while you set up your device
+2. Power on your Ipsos laptop
+3. Confirm the device ID matches the device in front of you
+4. When prompted for a PIN, enter the PIN shown in this guide
+5. Contact Helpdesk if the PIN is not accepted'''),
     _InstructionData(
         title: 'Connect to WiFi',
         description:
@@ -486,6 +555,15 @@ Please have your device ID ready when you contact us.''',
         );
       },
     );
+  }
+
+  String? _pinForDeviceId(String deviceId) {
+    final digits = RegExp(r'(\d{3})$').firstMatch(deviceId.trim())?.group(1);
+    if (digits == null) {
+      return null;
+    }
+
+    return '8$digits';
   }
 }
 

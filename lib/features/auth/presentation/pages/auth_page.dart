@@ -20,7 +20,7 @@ class AuthPage extends StatelessWidget {
               child: Column(
                 children: [
                   Text(
-                    'Scan the QR code on your Ipsos device package, then choose the option that matches you.',
+                    'Choose the option that matches your interviewer status.',
                     style: Theme.of(context)
                         .textTheme
                         .bodyLarge
@@ -28,7 +28,7 @@ class AuthPage extends StatelessWidget {
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 24),
-                  _buildQrHelpCard(context),
+                  _buildSetupHelpCard(context),
                   const SizedBox(height: 28),
                   AuthButton(
                     label: 'New Interviewer',
@@ -53,7 +53,7 @@ class AuthPage extends StatelessWidget {
     );
   }
 
-  Widget _buildQrHelpCard(BuildContext context) {
+  Widget _buildSetupHelpCard(BuildContext context) {
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(20),
@@ -67,13 +67,13 @@ class AuthPage extends StatelessWidget {
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(color: AppTheme.tealMuted),
               ),
-              child: const Icon(Icons.qr_code_2_rounded,
+              child: const Icon(Icons.support_agent_rounded,
                   color: AppTheme.tealDark, size: 36),
             ),
             const SizedBox(width: 16),
             Expanded(
               child: Text(
-                'This portal is the self-help path normally handled during a helpdesk setup call: verify identity, enter the device ID, get PIN guidance, connect WiFi, open Teams, and start Ipsos apps.',
+                'This portal is the self-help path normally handled during a helpdesk setup call: verify identity, confirm your assigned device, get PIN guidance, connect WiFi, open Teams, and start Ipsos apps.',
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
             ),

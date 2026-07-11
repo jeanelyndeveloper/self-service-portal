@@ -34,7 +34,7 @@ class DashboardPage extends ConsumerWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _buildWelcomeCard(context, authState.user?.username),
+            _buildWelcomeCard(context, authState.user?.displayName),
             const SizedBox(height: 36),
             Text(
               'What would you like to do?',
@@ -44,69 +44,29 @@ class DashboardPage extends ConsumerWidget {
             _buildActionCard(
               context,
               title: 'Update iReach',
-              description: 'Install the latest version when ready',
+              description: 'Confirm your device and run the update checklist',
               icon: Icons.system_update_alt_rounded,
               onTap: () => context.go('/update-ireach'),
             ),
             const SizedBox(height: 16),
             _buildActionCard(
               context,
-              title: 'Device Information',
-              description: 'View and manage your device details',
-              icon: Icons.devices_rounded,
-              onTap: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                      content: Text('Device information feature coming soon')),
-                );
-              },
+              title: 'Knowledge Base',
+              description: 'Read common I-Reach and setup guides',
+              icon: Icons.menu_book_rounded,
+              onTap: () => context.go('/knowledge-base'),
             ),
             const SizedBox(height: 16),
             _buildActionCard(
               context,
-              title: 'Get Support',
-              description: 'Contact helpdesk for assistance',
+              title: 'Contact Help Desk',
+              description: 'Create a support ticket for your project',
               icon: Icons.support_agent_rounded,
-              onTap: () => _showSupportDialog(context),
+              onTap: () => context.go('/support-ticket'),
             ),
           ],
         ),
       ),
-    );
-  }
-
-  void _showSupportDialog(BuildContext context) {
-    showDialog<void>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Get Support'),
-          content: const Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text('Contact helpdesk for assistance.'),
-              SizedBox(height: 16),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: Icon(Icons.email_outlined),
-                title: Text('helpdesk@ipsos.com'),
-              ),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: Icon(Icons.phone_outlined),
-                title: Text('1-800-IPSOS-HELP'),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Close'),
-            ),
-          ],
-        );
-      },
     );
   }
 

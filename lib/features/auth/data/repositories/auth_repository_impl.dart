@@ -12,7 +12,8 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<Result<UserEntity>> authenticateNewInterviewer(
       String email, String lastFourDigits) async {
     try {
-      final model = await _dataSource.authenticateNewInterviewer(email, lastFourDigits);
+      final model =
+          await _dataSource.authenticateNewInterviewer(email, lastFourDigits);
       return Success(model.toEntity());
     } on Exception catch (e) {
       return Err(AuthFailure(_extractMessage(e)));
@@ -23,7 +24,8 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<Result<UserEntity>> authenticateExistingInterviewer(
       String username, String password) async {
     try {
-      final model = await _dataSource.authenticateExistingInterviewer(username, password);
+      final model =
+          await _dataSource.authenticateExistingInterviewer(username, password);
       return Success(model.toEntity());
     } on Exception catch (e) {
       return Err(AuthFailure(_extractMessage(e)));
@@ -31,5 +33,14 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   String _extractMessage(Exception e) =>
-      e.toString().replaceFirst('Exception: ', '');
+      switch (e.toString().replaceFirst('Exception: ', '')) {
+        final message
+            when message.contains('not recognised') ||
+                message.contains('required') ||
+                message.contains('Unable to verify') ||
+                message.contains('Please contact Helpdesk') =>
+          message,
+        _ =>
+          'We could not complete authentication. Please check your details or contact Helpdesk.',
+      };
 }

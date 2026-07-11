@@ -25,11 +25,12 @@ class _NewInterviewerPageState extends ConsumerState<NewInterviewerPage> {
   }
 
   Future<void> _authenticate() async {
-    final email = _emailController.text.trim().isEmpty
-        ? 'test@ipsos.com'
-        : _emailController.text;
-    final phone =
-        _phoneController.text.trim().isEmpty ? '1234' : _phoneController.text;
+    if (!_formKey.currentState!.validate()) {
+      return;
+    }
+
+    final email = _emailController.text.trim();
+    final phone = _phoneController.text.trim();
 
     showDialog(
       context: context,
@@ -95,7 +96,7 @@ class _NewInterviewerPageState extends ConsumerState<NewInterviewerPage> {
                       ),
                       const SizedBox(height: 20),
                       Text(
-                        'We will verify your new interviewer record before opening the device knowledge guide. Your device has already been prepared in the backend and assigned a device ID.',
+                        'We will verify your interviewer record using your email address and the last 4 digits of your mobile number.',
                         style: Theme.of(context).textTheme.bodyLarge,
                       ),
                       const SizedBox(height: 18),
@@ -115,16 +116,21 @@ class _NewInterviewerPageState extends ConsumerState<NewInterviewerPage> {
               const SizedBox(height: 12),
               TextFormField(
                 controller: _emailController,
+                autocorrect: false,
+                enableSuggestions: false,
+                maxLength: 254,
                 decoration: const InputDecoration(
                   hintText: 'your.email@example.com',
                   prefixIcon: Icon(Icons.email, size: 28),
+                  counterText: '',
                 ),
                 keyboardType: TextInputType.emailAddress,
                 validator: (value) {
-                  if (value == null || value.isEmpty) {
+                  final email = value?.trim() ?? '';
+                  if (email.isEmpty) {
                     return 'Email is required';
                   }
-                  if (!value.contains('@')) {
+                  if (!RegExp(r'^[^\s@]+@[^\s@]+\.[^\s@]+$').hasMatch(email)) {
                     return 'Please enter a valid email';
                   }
                   return null;
@@ -141,6 +147,8 @@ class _NewInterviewerPageState extends ConsumerState<NewInterviewerPage> {
               const SizedBox(height: 12),
               TextFormField(
                 controller: _phoneController,
+                autocorrect: false,
+                enableSuggestions: false,
                 decoration: const InputDecoration(
                   hintText: '1234',
                   prefixIcon: Icon(Icons.phone, size: 28),
@@ -172,9 +180,9 @@ class _NewInterviewerPageState extends ConsumerState<NewInterviewerPage> {
 
   Widget _buildSetupSummary(BuildContext context) {
     final items = [
-      (Icons.badge_outlined, 'Confirm your interviewer credentials'),
-      (Icons.devices_outlined, 'Enter the device ID from the package'),
-      (Icons.pin_outlined, 'Get PIN and first-login guidance'),
+      (Icons.badge_outlined, 'Verify your interviewer record'),
+      (Icons.devices_outlined, 'Confirm your assigned device'),
+      (Icons.pin_outlined, 'Get your first-login PIN'),
       (Icons.wifi_rounded, 'Connect WiFi, Teams, and Ipsos apps'),
     ];
 

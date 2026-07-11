@@ -11,7 +11,8 @@ class DeviceRepositoryImpl implements DeviceRepository {
   @override
   Future<Result<DeviceEntity>> validateDevice(String deviceId) async {
     if (deviceId.length < 5) {
-      return const Err(DeviceFailure('Device ID must be at least 5 characters'));
+      return const Err(
+          DeviceFailure('Device ID must be at least 5 characters'));
     }
     try {
       final model = await _dataSource.validateDevice(deviceId);
@@ -32,5 +33,12 @@ class DeviceRepositoryImpl implements DeviceRepository {
   }
 
   String _extractMessage(Exception e) =>
-      e.toString().replaceFirst('Exception: ', '');
+      switch (e.toString().replaceFirst('Exception: ', '')) {
+        final message
+            when message.contains('Device ID must') ||
+                message.contains('Device could not') =>
+          message,
+        _ =>
+          'We could not complete the device request. Please contact Helpdesk for assistance.',
+      };
 }
