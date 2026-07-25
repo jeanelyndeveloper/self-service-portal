@@ -31,11 +31,41 @@ flutter pub get
 
 ### 2. Run the web app in development mode
 
+Start the local API proxy in one terminal:
+
+```bash
+dart run tool/dev_api_proxy.dart
+```
+
+For new interviewer verification, the proxy authenticates to the BO API from
+the server side. Provide the BO service account through environment variables;
+do not put these credentials in Flutter Web code:
+
+```bash
+BO_API_ADMIN_USERNAME=... \
+BO_API_ADMIN_PASSWORD=... \
+dart run tool/dev_api_proxy.dart
+```
+
+The proxy uses `https://smstg.ipsos.co.nz` by default for existing interviewer
+SMS API requests, including `POST /api/v1/Authentication`. BO requests for new
+interviewer verification use `https://boapistg.ipsos.co.nz`. You can override
+them with `DEV_API_PROXY_TARGET` and `BO_API_BASE_URL`.
+
+Then run the Flutter web app in another terminal:
+
 ```bash
 flutter run -d chrome
 ```
 
 The app will open in your default Chrome browser at `http://localhost:port`
+
+To bypass the local proxy and point directly at a specific API base URL, pass it
+explicitly:
+
+```bash
+flutter run -d chrome --dart-define=APP_API_BASE_URL=https://smstg.ipsos.co.nz
+```
 
 ### 3. Build for production
 
@@ -100,14 +130,17 @@ Replace the mock update execution in `executeIReachUpdate()` with calls to your 
 ### New Interviewer
 1. Select "New Interviewer" on auth screen
 2. Enter email and last 4 digits of phone number
-3. Enter device ID
-4. Receive device-specific setup instructions
-5. Follow interactive steps to complete setup
+3. The server-side proxy authenticates to the BO API with the service account
+4. The proxy looks up the Surveyor record by email and validates the mobile number
+5. Receive assigned device details and device-specific setup instructions
+6. Follow the setup steps to complete onboarding
 
 ### Existing Interviewer
 1. Select "Existing Interviewer" on auth screen
 2. Enter username and password
-3. Access dashboard with options including:
+3. Authenticate through the SMS API at `https://smstg.ipsos.co.nz/api/v1/Authentication`
+4. Retrieve the signed-in profile from `https://smstg.ipsos.co.nz/api/v1/Users` using the `sm-authorize` token
+5. Access dashboard with options including:
    - Update iReach application
    - View device information
    - Contact support

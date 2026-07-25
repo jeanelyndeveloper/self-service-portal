@@ -43,7 +43,7 @@ class DashboardPage extends ConsumerWidget {
             const SizedBox(height: 20),
             _buildActionCard(
               context,
-              title: 'Update iReach',
+              title: 'Update I-Reach',
               description: 'Confirm your device and run the update checklist',
               icon: Icons.system_update_alt_rounded,
               onTap: () => context.go('/update-ireach'),
@@ -52,15 +52,15 @@ class DashboardPage extends ConsumerWidget {
             _buildActionCard(
               context,
               title: 'Knowledge Base',
-              description: 'Read common I-Reach and setup guides',
+              description: 'Guides for sync, updates, and connectivity',
               icon: Icons.menu_book_rounded,
               onTap: () => context.go('/knowledge-base'),
             ),
             const SizedBox(height: 16),
             _buildActionCard(
               context,
-              title: 'Contact Help Desk',
-              description: 'Create a support ticket for your project',
+              title: 'Create Support Ticket',
+              description: 'Send a Help Desk request with your details',
               icon: Icons.support_agent_rounded,
               onTap: () => context.go('/support-ticket'),
             ),
@@ -71,6 +71,8 @@ class DashboardPage extends ConsumerWidget {
   }
 
   Widget _buildWelcomeCard(BuildContext context, String? username) {
+    final firstName = username?.trim().split(RegExp(r'\s+')).first;
+
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -105,16 +107,18 @@ class DashboardPage extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Welcome back!',
+                  firstName == null || firstName.isEmpty
+                      ? 'Welcome back'
+                      : 'Welcome back,\n$firstName',
                   style: GoogleFonts.nunito(
                     fontSize: 22,
                     fontWeight: FontWeight.w900,
                     color: Colors.white,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 6),
                 Text(
-                  username ?? '',
+                  'Ready to continue?',
                   style: GoogleFonts.nunito(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
@@ -134,10 +138,11 @@ class DashboardPage extends ConsumerWidget {
     required String title,
     required String description,
     required IconData icon,
-    required VoidCallback onTap,
+    VoidCallback? onTap,
   }) {
+    final isEnabled = onTap != null;
     return Material(
-      color: Colors.white,
+      color: isEnabled ? Colors.white : Colors.grey.shade100,
       borderRadius: BorderRadius.circular(20),
       child: InkWell(
         onTap: onTap,
@@ -156,14 +161,24 @@ class DashboardPage extends ConsumerWidget {
                   color: AppTheme.primaryTeal.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(14),
                 ),
-                child: Icon(icon, size: 40, color: AppTheme.primaryTeal),
+                child: Icon(
+                  icon,
+                  size: 40,
+                  color:
+                      isEnabled ? AppTheme.primaryTeal : Colors.grey.shade500,
+                ),
               ),
               const SizedBox(width: 20),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title, style: Theme.of(context).textTheme.titleLarge),
+                    Text(
+                      title,
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                            color: isEnabled ? null : Colors.grey.shade700,
+                          ),
+                    ),
                     const SizedBox(height: 6),
                     Text(description,
                         style: Theme.of(context).textTheme.bodyMedium),
@@ -171,8 +186,13 @@ class DashboardPage extends ConsumerWidget {
                 ),
               ),
               const SizedBox(width: 12),
-              const Icon(Icons.arrow_forward_ios_rounded,
-                  size: 20, color: AppTheme.tealLight),
+              Icon(
+                isEnabled
+                    ? Icons.arrow_forward_ios_rounded
+                    : Icons.lock_clock_rounded,
+                size: 20,
+                color: isEnabled ? AppTheme.tealLight : Colors.grey.shade500,
+              ),
             ],
           ),
         ),

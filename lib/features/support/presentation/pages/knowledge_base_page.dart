@@ -1,18 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../../../../core/widgets/page_content.dart';
+import '../../../auth/domain/entities/user_entity.dart';
+import '../../../auth/presentation/providers/auth_notifier.dart';
 
-class KnowledgeBasePage extends StatelessWidget {
+class KnowledgeBasePage extends ConsumerWidget {
   const KnowledgeBasePage({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(authNotifierProvider).user;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Knowledge Base'),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () => context.go('/existing-interviewer-dashboard'),
+          onPressed: () => _goBack(context, user?.type),
         ),
       ),
       body: PageContent(
@@ -38,6 +43,27 @@ class KnowledgeBasePage extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             const _GuideCard(
+              icon: Icons.wifi_rounded,
+              title: 'How to connect to WiFi',
+              steps: [
+                'Open the WiFi settings on your laptop or tablet.',
+                'Select your available network.',
+                'Enter the WiFi password and wait for the connected status.',
+                'Open a browser page to confirm the connection is working.',
+              ],
+            ),
+            const SizedBox(height: 16),
+            const _GuideCard(
+              icon: Icons.lock_open_rounded,
+              title: 'How to log into your device',
+              steps: [
+                'Power on the assigned laptop or tablet.',
+                'Use the PIN shown after new interviewer verification.',
+                'If the PIN does not work, create a support ticket.',
+              ],
+            ),
+            const SizedBox(height: 16),
+            const _GuideCard(
               icon: Icons.system_update_alt_rounded,
               title: 'Before updating I-Reach',
               steps: [
@@ -48,7 +74,7 @@ class KnowledgeBasePage extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             const _GuideCard(
-              icon: Icons.wifi_rounded,
+              icon: Icons.help_outline_rounded,
               title: 'Basic connection checks',
               steps: [
                 'Confirm your device is connected to WiFi.',
@@ -60,6 +86,14 @@ class KnowledgeBasePage extends StatelessWidget {
         ),
       ),
     );
+  }
+
+  void _goBack(BuildContext context, UserType? userType) {
+    if (userType == UserType.newInterviewer) {
+      context.go('/new-interviewer');
+      return;
+    }
+    context.go('/existing-interviewer-dashboard');
   }
 }
 

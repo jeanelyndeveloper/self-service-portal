@@ -1,3 +1,5 @@
+import 'package:dio/dio.dart';
+
 import '../../domain/entities/user_entity.dart';
 import '../../domain/repositories/auth_repository.dart';
 import '../../../../core/errors/failures.dart';
@@ -15,6 +17,8 @@ class AuthRepositoryImpl implements AuthRepository {
       final model =
           await _dataSource.authenticateNewInterviewer(email, lastFourDigits);
       return Success(model.toEntity());
+    } on DioException catch (e) {
+      return Err(AuthFailure(_extractDioMessage(e)));
     } on Exception catch (e) {
       return Err(AuthFailure(_extractMessage(e)));
     }
@@ -27,9 +31,25 @@ class AuthRepositoryImpl implements AuthRepository {
       final model =
           await _dataSource.authenticateExistingInterviewer(username, password);
       return Success(model.toEntity());
+    } on DioException catch (e) {
+      return Err(AuthFailure(_extractDioMessage(e)));
     } on Exception catch (e) {
       return Err(AuthFailure(_extractMessage(e)));
     }
+  }
+
+  String _extractDioMessage(DioException e) {
+    if (e.type == DioExceptionType.connectionError ||
+        e.type == DioExceptionType.unknown) {
+      return 'The API request could not be completed. For local testing, start the API proxy with: dart run tool/dev_api_proxy.dart';
+    }
+
+    final statusCode = e.response?.statusCode;
+    if (statusCode == 401 || statusCode == 403) {
+      return 'Authentication was rejected by the staging API. Please check the username and password.';
+    }
+
+    return 'We could not complete authentication. Please check your details or contact Helpdesk.';
   }
 
   String _extractMessage(Exception e) =>
@@ -38,6 +58,7 @@ class AuthRepositoryImpl implements AuthRepository {
             when message.contains('not recognised') ||
                 message.contains('required') ||
                 message.contains('Unable to verify') ||
+                message.contains('mobile digits') ||
                 message.contains('Please contact Helpdesk') =>
           message,
         _ =>

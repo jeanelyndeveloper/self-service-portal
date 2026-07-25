@@ -9,14 +9,17 @@ class AuthNotifier extends Notifier<AuthState> {
   @override
   AuthState build() => const AuthState.initial();
 
-  Future<bool> authenticateNewInterviewer(String email, String lastFourDigits) async {
+  Future<bool> authenticateNewInterviewer(
+      String email, String lastFourDigits) async {
     state = state.copyWith(isLoading: true, clearError: true);
     final result = await ref.read(authenticateNewInterviewerProvider).call(
-          AuthenticateNewInterviewerParams(email: email, lastFourDigits: lastFourDigits),
+          AuthenticateNewInterviewerParams(
+              email: email, lastFourDigits: lastFourDigits),
         );
     switch (result) {
       case Success(:final data):
-        state = state.copyWith(isLoading: false, isAuthenticated: true, user: data);
+        state =
+            state.copyWith(isLoading: false, isAuthenticated: true, user: data);
         return true;
       case Err(:final failure):
         state = state.copyWith(isLoading: false, error: failure.message);
@@ -24,14 +27,17 @@ class AuthNotifier extends Notifier<AuthState> {
     }
   }
 
-  Future<bool> authenticateExistingInterviewer(String username, String password) async {
+  Future<bool> authenticateExistingInterviewer(
+      String username, String password) async {
     state = state.copyWith(isLoading: true, clearError: true);
     final result = await ref.read(authenticateExistingInterviewerProvider).call(
-          AuthenticateExistingInterviewerParams(username: username, password: password),
+          AuthenticateExistingInterviewerParams(
+              username: username, password: password),
         );
     switch (result) {
       case Success(:final data):
-        state = state.copyWith(isLoading: false, isAuthenticated: true, user: data);
+        state =
+            state.copyWith(isLoading: false, isAuthenticated: true, user: data);
         return true;
       case Err(:final failure):
         state = state.copyWith(isLoading: false, error: failure.message);
@@ -42,4 +48,5 @@ class AuthNotifier extends Notifier<AuthState> {
   void logout() => state = const AuthState.initial();
 }
 
-final authNotifierProvider = NotifierProvider<AuthNotifier, AuthState>(AuthNotifier.new);
+final authNotifierProvider =
+    NotifierProvider<AuthNotifier, AuthState>(AuthNotifier.new);

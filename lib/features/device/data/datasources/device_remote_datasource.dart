@@ -7,6 +7,9 @@ class DeviceRemoteDataSource implements DeviceDataSource {
   final NetworkClient _client;
   const DeviceRemoteDataSource(this._client);
 
+  static const _statusPollDelay = Duration(seconds: 3);
+  static const _statusPollAttempts = 100;
+
   @override
   Future<DeviceModel> validateDevice(String deviceId) async {
     final normalizedDeviceId = deviceId.trim().toUpperCase();
@@ -26,19 +29,76 @@ class DeviceRemoteDataSource implements DeviceDataSource {
 
   @override
   Future<String> executeIReachUpdate(String deviceId) async {
+    final computerName = deviceId.trim().toUpperCase();
     final response = await _client.post<Map<String, dynamic>>(
       AppConstants.iReachUpdateEndpoint,
       data: {
-        'hostname': deviceId.trim().toUpperCase(),
+        'computerName': computerName,
       },
     );
 
     final data = response.data;
-    final message = data?['message'] ?? data?['statusMessage'];
-    if (message is String && message.trim().isNotEmpty) {
-      return message;
+    final initialStatus = _extractStatus(data);
+    if (initialStatus == 'success') {
+      return _extractMessage(data) ??
+          'I-Reach has been updated. You can now reopen it.';
+    }
+    if (initialStatus == 'failed') {
+      throw Exception(_extractMessage(data) ??
+          'The update could not be completed. Please contact the Help Desk.');
     }
 
-    return 'I-Reach update started successfully on $deviceId';
+    final executionId = _extractExecutionId(data);
+    if (executionId == null) {
+      return _extractMessage(data) ??
+          'The update request was sent. Please contact the Help Desk if I-Reach does not update.';
+    }
+
+    return _pollUpdateStatus(executionId);
+  }
+
+  Future<String> _pollUpdateStatus(String executionId) async {
+    for (var attempt = 0; attempt < _statusPollAttempts; attempt++) {
+      await Future<void>.delayed(_statusPollDelay);
+
+      final response = await _client.get<Map<String, dynamic>>(
+        '${AppConstants.iReachUpdateStatusEndpoint}/$executionId',
+      );
+      final data = response.data;
+      final status = _extractStatus(data);
+
+      if (status == 'success') {
+        return _extractMessage(data) ??
+            'I-Reach has been updated. You can now reopen it.';
+      }
+      if (status == 'failed') {
+        throw Exception(_extractMessage(data) ??
+            'The update could not be completed. Please contact the Help Desk.');
+      }
+    }
+
+    throw Exception(
+      'The update is taking longer than expected. Please contact the Help Desk.',
+    );
+  }
+
+  String? _extractExecutionId(Map<String, dynamic>? data) {
+    final value = data?['executionId'] ??
+        data?['execution_id'] ??
+        data?['id'] ??
+        data?['jobId'] ??
+        data?['job_id'];
+    return value?.toString();
+  }
+
+  String? _extractStatus(Map<String, dynamic>? data) {
+    final value = data?['status'] ?? data?['state'] ?? data?['result'];
+    return value?.toString().trim().toLowerCase();
+  }
+
+  String? _extractMessage(Map<String, dynamic>? data) {
+    final value = data?['message'] ?? data?['statusMessage'] ?? data?['error'];
+    final message = value?.toString().trim();
+    return message == null || message.isEmpty ? null : message;
   }
 }

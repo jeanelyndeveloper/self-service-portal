@@ -10,8 +10,10 @@ import '../features/support/presentation/pages/support_ticket_page.dart';
 
 abstract final class AppRouter {
   static final config = GoRouter(
-    initialLocation: '/auth',
+    initialLocation: '/',
+    overridePlatformDefaultLocation: true,
     routes: [
+      GoRoute(path: '/', builder: (_, __) => const AuthPage()),
       GoRoute(path: '/auth', builder: (_, __) => const AuthPage()),
       GoRoute(
           path: '/new-interviewer',
@@ -33,5 +35,6 @@ abstract final class AppRouter {
           path: '/support-ticket',
           builder: (_, __) => const SupportTicketPage()),
     ],
+    errorBuilder: (_, __) => const AuthPage(),
   );
 }
