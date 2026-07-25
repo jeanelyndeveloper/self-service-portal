@@ -14,21 +14,7 @@ class UpdateIReachPage extends ConsumerStatefulWidget {
 }
 
 class _UpdateIReachPageState extends ConsumerState<UpdateIReachPage> {
-  bool _iReachSynced = false;
-  bool _iReachClosed = false;
-  late final DeviceNotifier _deviceNotifier;
-
-  @override
-  void initState() {
-    super.initState();
-    _deviceNotifier = ref.read(deviceNotifierProvider.notifier);
-  }
-
-  @override
-  void dispose() {
-    _deviceNotifier.reset();
-    super.dispose();
-  }
+  bool _isReadyForUpdate = false;
 
   void _confirmComputerName() {
     final deviceId = ref.read(authNotifierProvider).user?.deviceId;
@@ -42,71 +28,8 @@ class _UpdateIReachPageState extends ConsumerState<UpdateIReachPage> {
         .confirmAssignedDevice(deviceId.trim());
   }
 
-  Future<void> _confirmSyncCompleted(bool? value) async {
-    if (value != true) {
-      setState(() => _iReachSynced = false);
-      return;
-    }
-
-    final confirmed = await _showSafetyDialog(
-      title: 'Confirm I-Reach Sync',
-      icon: Icons.sync_problem_rounded,
-      iconColor: const Color(0xFFB26A00),
-      message:
-          'I-Reach stores work offline. Starting the update before syncing may cause unsaved interviewer work on this device to be lost.',
-      checklist: const [
-        'I opened I-Reach.',
-        'I clicked Sync.',
-        'I waited until synchronization completed.',
-      ],
-      confirmLabel: 'Yes, Sync Completed',
-    );
-
-    if (mounted) {
-      setState(() => _iReachSynced = confirmed);
-    }
-  }
-
-  Future<void> _confirmIReachClosed(bool? value) async {
-    if (value != true) {
-      setState(() => _iReachClosed = false);
-      return;
-    }
-
-    final confirmed = await _showSafetyDialog(
-      title: 'Confirm I-Reach Is Closed',
-      icon: Icons.close_fullscreen_rounded,
-      iconColor: AppTheme.tealDark,
-      message:
-          'The updater cannot safely run while I-Reach is open. Please close the app completely before continuing.',
-      checklist: const [
-        'I saved or completed anything still open.',
-        'I closed I-Reach completely.',
-        'I returned to this portal after closing it.',
-      ],
-      confirmLabel: 'Yes, I-Reach Is Closed',
-    );
-
-    if (mounted) {
-      setState(() => _iReachClosed = confirmed);
-    }
-  }
-
   Future<void> _startUpdateWithConfirmation() async {
-    if (!_iReachSynced || !_iReachClosed) {
-      await _showSafetyDialog(
-        title: 'Confirmation Required',
-        icon: Icons.warning_amber_rounded,
-        iconColor: const Color(0xFFB26A00),
-        message:
-            'Please confirm that I-Reach has been synchronized and closed before starting the update.',
-        checklist: const [
-          'Sync I-Reach first.',
-          'Close I-Reach completely.',
-        ],
-        confirmLabel: 'Review Steps',
-        showCancel: false,
-      );
+    if (!_isReadyForUpdate) {
       return;
     }
 
@@ -130,15 +53,25 @@ class _UpdateIReachPageState extends ConsumerState<UpdateIReachPage> {
   }
 
   Future<void> _executeUpdate() async {
-    final deviceId = ref.read(authNotifierProvider).user?.deviceId;
+    final user = ref.read(authNotifierProvider).user;
+    final deviceId = user?.deviceId;
+    final sessionToken = user?.sessionToken;
     if (deviceId == null || deviceId.trim().isEmpty) {
       _showMissingComputerNameMessage();
+      return;
+    }
+    if (sessionToken == null || sessionToken.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Your session has expired. Please log in again.'),
+        ),
+      );
       return;
     }
 
     final success = await ref
         .read(deviceNotifierProvider.notifier)
-        .executeIReachUpdate(deviceId.trim());
+        .executeIReachUpdate(deviceId.trim(), sessionToken);
 
     if (mounted) {
       if (!success) {
@@ -302,7 +235,6 @@ class _UpdateIReachPageState extends ConsumerState<UpdateIReachPage> {
 
   Widget _buildUpdatePrompt(BuildContext context) {
     final device = ref.watch(deviceNotifierProvider).device;
-    final isReadyForUpdate = _iReachSynced && _iReachClosed;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -336,10 +268,9 @@ class _UpdateIReachPageState extends ConsumerState<UpdateIReachPage> {
         _buildConfirmationPanel(context),
         const SizedBox(height: 32),
         ElevatedButton.icon(
-          onPressed: _startUpdateWithConfirmation,
+          onPressed: _isReadyForUpdate ? _startUpdateWithConfirmation : null,
           icon: const Icon(Icons.play_arrow, size: 24),
-          label:
-              Text(isReadyForUpdate ? 'Start Update' : 'Confirm Steps First'),
+          label: const Text('Start Update'),
         ),
       ],
     );
@@ -402,11 +333,14 @@ class _UpdateIReachPageState extends ConsumerState<UpdateIReachPage> {
 
   Widget _buildInstructionTimeline(BuildContext context) {
     const steps = [
-      'Open I-Reach.',
-      'Click Sync.',
-      'Wait until synchronization completes.',
-      'Close I-Reach completely.',
-      'Return to this portal.',
+      (
+        'Sync I-Reach',
+        'Open I-Reach, click Sync, and wait for synchronization to finish. This saves all work from your device to the server.'
+      ),
+      (
+        'Close I-Reach',
+        'Close I-Reach completely before continuing. The updater cannot safely run while the application is open.'
+      ),
     ];
 
     return Card(
@@ -416,7 +350,7 @@ class _UpdateIReachPageState extends ConsumerState<UpdateIReachPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Sync Instructions',
+              'Before you update',
               style: Theme.of(context)
                   .textTheme
                   .titleLarge
@@ -424,14 +358,24 @@ class _UpdateIReachPageState extends ConsumerState<UpdateIReachPage> {
             ),
             const SizedBox(height: 22),
             for (var index = 0; index < steps.length; index++)
-              _buildTimelineStep(context, index + 1, steps[index]),
+              _buildTimelineStep(
+                context,
+                index + 1,
+                steps[index].$1,
+                steps[index].$2,
+              ),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildTimelineStep(BuildContext context, int number, String text) {
+  Widget _buildTimelineStep(
+    BuildContext context,
+    int number,
+    String title,
+    String description,
+  ) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: Row(
@@ -458,7 +402,17 @@ class _UpdateIReachPageState extends ConsumerState<UpdateIReachPage> {
           Expanded(
             child: Padding(
               padding: const EdgeInsets.only(top: 3),
-              child: Text(text, style: Theme.of(context).textTheme.bodyLarge),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: Theme.of(context).textTheme.titleMedium),
+                  const SizedBox(height: 4),
+                  Text(
+                    description,
+                    style: Theme.of(context).textTheme.bodyLarge,
+                  ),
+                ],
+              ),
             ),
           ),
         ],
@@ -467,8 +421,6 @@ class _UpdateIReachPageState extends ConsumerState<UpdateIReachPage> {
   }
 
   Widget _buildConfirmationPanel(BuildContext context) {
-    final isReadyForUpdate = _iReachSynced && _iReachClosed;
-
     return Container(
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
@@ -476,7 +428,7 @@ class _UpdateIReachPageState extends ConsumerState<UpdateIReachPage> {
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color:
-              isReadyForUpdate ? const Color(0xFF7BC99B) : AppTheme.tealMuted,
+              _isReadyForUpdate ? const Color(0xFF7BC99B) : AppTheme.tealMuted,
           width: 1.5,
         ),
       ),
@@ -486,10 +438,10 @@ class _UpdateIReachPageState extends ConsumerState<UpdateIReachPage> {
           Row(
             children: [
               Icon(
-                isReadyForUpdate
+                _isReadyForUpdate
                     ? Icons.verified_rounded
                     : Icons.fact_check_outlined,
-                color: isReadyForUpdate
+                color: _isReadyForUpdate
                     ? const Color(0xFF2E9D5C)
                     : AppTheme.tealDark,
                 size: 30,
@@ -504,48 +456,17 @@ class _UpdateIReachPageState extends ConsumerState<UpdateIReachPage> {
             ],
           ),
           const SizedBox(height: 14),
-          _buildConfirmationTile(
-            context,
-            value: _iReachSynced,
-            onChanged: _confirmSyncCompleted,
-            title: 'I have synchronized I-Reach',
-            subtitle: 'All offline work saved on this device is on the server.',
-          ),
-          _buildConfirmationTile(
-            context,
-            value: _iReachClosed,
-            onChanged: _confirmIReachClosed,
-            title: 'I have closed I-Reach',
-            subtitle: 'The app is fully closed and ready for the update.',
+          CheckboxListTile(
+            value: _isReadyForUpdate,
+            onChanged: (value) =>
+                setState(() => _isReadyForUpdate = value ?? false),
+            controlAffinity: ListTileControlAffinity.leading,
+            title: const Text(
+              'I have synced and closed I-Reach and I am ready for the update.',
+            ),
+            contentPadding: EdgeInsets.zero,
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildConfirmationTile(
-    BuildContext context, {
-    required bool value,
-    required ValueChanged<bool?> onChanged,
-    required String title,
-    required String subtitle,
-  }) {
-    return Container(
-      margin: const EdgeInsets.only(top: 12),
-      decoration: BoxDecoration(
-        color: value ? const Color(0xFFF0FBF5) : AppTheme.surfaceWhite,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: value ? const Color(0xFF7BC99B) : AppTheme.tealMuted,
-        ),
-      ),
-      child: CheckboxListTile(
-        value: value,
-        onChanged: onChanged,
-        controlAffinity: ListTileControlAffinity.leading,
-        title: Text(title, style: Theme.of(context).textTheme.titleMedium),
-        subtitle: Text(subtitle, style: Theme.of(context).textTheme.bodyMedium),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       ),
     );
   }
@@ -689,8 +610,9 @@ class _UpdateIReachPageState extends ConsumerState<UpdateIReachPage> {
             padding: const EdgeInsets.all(40),
             child: Column(
               children: [
-                Icon(Icons.error_outline, color: Colors.red.shade600, size: 80),
-                const SizedBox(height: 24),
+                Icon(Icons.error_outline_rounded,
+                    color: Colors.red.shade600, size: 72),
+                const SizedBox(height: 20),
                 Text(
                   'The update could not be completed',
                   style: Theme.of(context)
@@ -699,29 +621,23 @@ class _UpdateIReachPageState extends ConsumerState<UpdateIReachPage> {
                       ?.copyWith(color: Colors.red.shade600),
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 14),
                 Text(
                   message,
                   style: Theme.of(context).textTheme.bodyLarge,
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Please contact the Help Desk for assistance.',
-                  style: Theme.of(context).textTheme.titleMedium,
                   textAlign: TextAlign.center,
                 ),
               ],
             ),
           ),
         ),
-        const SizedBox(height: 40),
+        const SizedBox(height: 32),
         ElevatedButton.icon(
           onPressed: () {
             ref.read(deviceNotifierProvider.notifier).reset();
             context.go('/existing-interviewer-dashboard');
           },
-          icon: const Icon(Icons.home, size: 24),
+          icon: const Icon(Icons.home_rounded, size: 22),
           label: const Text('Return to Dashboard'),
         ),
       ],

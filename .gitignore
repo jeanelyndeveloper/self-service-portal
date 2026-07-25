@@ -10,6 +10,9 @@ build/
 # IDE files
 .idea/
 .vscode/
+.env
+.env.*
+!.env.example
 
 # Generated web build archives
 *.zip

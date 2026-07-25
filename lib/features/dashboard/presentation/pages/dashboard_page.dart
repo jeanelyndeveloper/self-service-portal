@@ -70,8 +70,8 @@ class DashboardPage extends ConsumerWidget {
     );
   }
 
-  Widget _buildWelcomeCard(BuildContext context, String? username) {
-    final firstName = username?.trim().split(RegExp(r'\s+')).first;
+  Widget _buildWelcomeCard(BuildContext context, String? displayName) {
+    final surveyorName = displayName?.trim();
 
     return Container(
       padding: const EdgeInsets.all(24),
@@ -107,9 +107,9 @@ class DashboardPage extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  firstName == null || firstName.isEmpty
+                  surveyorName == null || surveyorName.isEmpty
                       ? 'Welcome back'
-                      : 'Welcome back,\n$firstName',
+                      : 'Welcome back,\n$surveyorName',
                   style: GoogleFonts.nunito(
                     fontSize: 22,
                     fontWeight: FontWeight.w900,

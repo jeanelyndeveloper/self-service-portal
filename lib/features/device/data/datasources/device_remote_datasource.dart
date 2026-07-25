@@ -1,3 +1,5 @@
+import 'package:dio/dio.dart';
+
 import '../../../../core/constants/app_constants.dart';
 import '../../../../core/network/network_client.dart';
 import '../models/device_model.dart';
@@ -28,14 +30,36 @@ class DeviceRemoteDataSource implements DeviceDataSource {
   }
 
   @override
-  Future<String> executeIReachUpdate(String deviceId) async {
+  Future<String> executeIReachUpdate(
+      String deviceId, String sessionToken) async {
     final computerName = deviceId.trim().toUpperCase();
-    final response = await _client.post<Map<String, dynamic>>(
-      AppConstants.iReachUpdateEndpoint,
-      data: {
-        'computerName': computerName,
-      },
-    );
+    late final Response<Map<String, dynamic>> response;
+    try {
+      response = await _client.post<Map<String, dynamic>>(
+        AppConstants.iReachUpdateEndpoint,
+        data: {
+          'computerName': computerName,
+        },
+        headers: {
+          'sm-authorize': sessionToken,
+        },
+      );
+    } on DioException catch (error) {
+      final responseData = error.response?.data;
+      final message = responseData is Map
+          ? responseData['message'] ?? responseData['error']
+          : null;
+      final safeMessage = message?.toString().trim();
+      if (safeMessage != null && safeMessage.isNotEmpty) {
+        if (safeMessage.contains('RMM_')) {
+          throw Exception(
+            'The update service is not configured. Please contact the Help Desk.',
+          );
+        }
+        throw Exception(safeMessage);
+      }
+      rethrow;
+    }
 
     final data = response.data;
     final initialStatus = _extractStatus(data);

@@ -47,6 +47,26 @@ BO_API_ADMIN_PASSWORD=... \
 dart run tool/dev_api_proxy.dart
 ```
 
+For the existing-interviewer I-Reach update, configure the device-platform
+values on the proxy process. Copy `.env.example` into your server secret
+configuration; the Dart proxy does not load `.env` files automatically.
+
+```bash
+RMM_API_BASE_URL=... \
+RMM_SYSTEM_TOKEN=... \
+RMM_IREACH_SCRIPT_ID=130 \
+dart run tool/dev_api_proxy.dart
+```
+
+The proxy keeps the system token and script ID server-side. The browser sends
+only the confirmed `computerName` to `POST /update-ireach`. The proxy queries
+`GET /agents/`, matches `hostname` to the computer name, extracts `agent_id`,
+and calls `POST /agents/{agent_id}/runscript/` with output mode `wait` and a
+90-second script timeout.
+
+For local development, the proxy automatically loads a git-ignored `.env`
+file from the project root. Real server environment variables take precedence.
+
 The proxy uses `https://smstg.ipsos.co.nz` by default for existing interviewer
 SMS API requests, including `POST /api/v1/Authentication`. BO requests for new
 interviewer verification use `https://boapistg.ipsos.co.nz`. You can override

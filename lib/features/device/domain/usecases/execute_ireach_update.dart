@@ -4,14 +4,16 @@ import '../../../../core/usecases/use_case.dart';
 
 final class ExecuteIReachUpdateParams {
   final String deviceId;
-  const ExecuteIReachUpdateParams(this.deviceId);
+  final String sessionToken;
+  const ExecuteIReachUpdateParams(this.deviceId, this.sessionToken);
 }
 
-class ExecuteIReachUpdate implements UseCase<String, ExecuteIReachUpdateParams> {
+class ExecuteIReachUpdate
+    implements UseCase<String, ExecuteIReachUpdateParams> {
   final DeviceRepository _repository;
   const ExecuteIReachUpdate(this._repository);
 
   @override
   Future<Result<String>> call(ExecuteIReachUpdateParams params) =>
-      _repository.executeIReachUpdate(params.deviceId);
+      _repository.executeIReachUpdate(params.deviceId, params.sessionToken);
 }

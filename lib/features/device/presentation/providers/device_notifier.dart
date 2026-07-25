@@ -35,11 +35,11 @@ class DeviceNotifier extends Notifier<DeviceState> {
     );
   }
 
-  Future<bool> executeIReachUpdate(String deviceId) async {
+  Future<bool> executeIReachUpdate(String deviceId, String sessionToken) async {
     state = state.copyWith(isUpdating: true, clearError: true);
     final result = await ref
         .read(executeIReachUpdateProvider)
-        .call(ExecuteIReachUpdateParams(deviceId));
+        .call(ExecuteIReachUpdateParams(deviceId, sessionToken));
     switch (result) {
       case Success(:final data):
         state = state.copyWith(

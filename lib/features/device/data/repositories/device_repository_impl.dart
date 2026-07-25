@@ -23,9 +23,11 @@ class DeviceRepositoryImpl implements DeviceRepository {
   }
 
   @override
-  Future<Result<String>> executeIReachUpdate(String deviceId) async {
+  Future<Result<String>> executeIReachUpdate(
+      String deviceId, String sessionToken) async {
     try {
-      final message = await _dataSource.executeIReachUpdate(deviceId);
+      final message =
+          await _dataSource.executeIReachUpdate(deviceId, sessionToken);
       return Success(message);
     } on Exception catch (e) {
       return Err(DeviceFailure(_extractMessage(e)));
@@ -36,7 +38,12 @@ class DeviceRepositoryImpl implements DeviceRepository {
       switch (e.toString().replaceFirst('Exception: ', '')) {
         final message
             when message.contains('Device ID must') ||
-                message.contains('Device could not') =>
+                message.contains('Device could not') ||
+                message.contains('session has expired') ||
+                message.contains('does not match your assigned computer') ||
+                message.contains('No managed device was found') ||
+                message.contains('update service is not configured') ||
+                message.contains('update could not be started') =>
           message,
         _ =>
           'We could not complete the device request. Please contact Helpdesk for assistance.',

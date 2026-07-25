@@ -61,6 +61,7 @@ class AuthRemoteDataSource implements AuthDataSource {
     return UserModel.fromJson({
       ...userData,
       'username': userData['username'] ?? normalizedUsername,
+      'sessionToken': token,
     });
   }
 

@@ -10,6 +10,7 @@ class UserModel {
   final String? deviceType;
   final String? devicePin;
   final String? project;
+  final String? sessionToken;
 
   const UserModel({
     required this.id,
@@ -21,6 +22,7 @@ class UserModel {
     this.deviceType,
     this.devicePin,
     this.project,
+    this.sessionToken,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -85,6 +87,7 @@ class UserModel {
           user['projectName'] ??
           user['project_name'] ??
           user['study']),
+      sessionToken: _stringValue(user['sessionToken']),
     );
   }
 
@@ -108,5 +111,6 @@ class UserModel {
         deviceType: deviceType,
         devicePin: devicePin,
         project: project,
+        sessionToken: sessionToken,
       );
 }

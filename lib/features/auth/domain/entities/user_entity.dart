@@ -8,6 +8,7 @@ class UserEntity {
   final String? deviceType;
   final String? devicePin;
   final String? project;
+  final String? sessionToken;
 
   const UserEntity({
     required this.id,
@@ -19,6 +20,7 @@ class UserEntity {
     this.deviceType,
     this.devicePin,
     this.project,
+    this.sessionToken,
   });
 }
 
