@@ -43,7 +43,8 @@ class DeviceRepositoryImpl implements DeviceRepository {
                 message.contains('does not match your assigned computer') ||
                 message.contains('No managed device was found') ||
                 message.contains('update service is not configured') ||
-                message.contains('update could not be started') =>
+                message.contains('update could not be started') ||
+                message.contains('update script ran but reported an error') =>
           message,
         _ =>
           'We could not complete the device request. Please contact Helpdesk for assistance.',

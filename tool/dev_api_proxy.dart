@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'rmm_script_result.dart';
+
 const _defaultTarget = 'https://smstg.ipsos.co.nz';
 const _defaultBoApiBaseUrl = 'https://boapistg.ipsos.co.nz';
 const _defaultPort = 8787;
@@ -372,7 +374,7 @@ Future<void> _handleIReachUpdate(HttpRequest request) async {
       return;
     }
 
-    await _sendRmmRequest(
+    final scriptResponse = await _sendRmmRequest(
       method: 'POST',
       baseUrl: rmmBaseUrl,
       path: '/agents/${Uri.encodeComponent(agentId)}/runscript/',
@@ -390,12 +392,13 @@ Future<void> _handleIReachUpdate(HttpRequest request) async {
         'timeout': 90,
       },
     );
+    final scriptResult = interpretRmmScriptResponse(scriptResponse);
     await _writeJson(
       request.response,
       HttpStatus.ok,
       {
-        'status': 'success',
-        'message': 'I-Reach has been updated. You can now reopen it.',
+        'status': scriptResult.succeeded ? 'success' : 'failed',
+        'message': scriptResult.message,
       },
     );
   } on StateError catch (error) {
